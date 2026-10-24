@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Link your Patreon</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --fg: #1d2330;
+    --muted: #5b6475;
+    --line: #d9dde5;
+    --accent: #1b6ef3;
+    --accent-fg: #ffffff;
+    --box: #f3f5f9;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12161f;
+      --fg: #e8ebf2;
+      --muted: #9aa3b5;
+      --line: #2b3243;
+      --accent: #5b9bff;
+      --accent-fg: #0b1220;
+      --box: #1a2030;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--fg);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+  main { width: 100%; max-width: 420px; }
+  h1 { font-size: 1.4rem; margin: 0 0 8px; }
+  p { margin: 0 0 16px; color: var(--muted); }
+  .btn {
+    display: block;
+    width: 100%;
+    padding: 14px 16px;
+    border-radius: 10px;
+    background: var(--accent);
+    color: var(--accent-fg);
+    text-align: center;
+    text-decoration: none;
+    font-weight: 600;
+    border: 0;
+    cursor: pointer;
+    font-size: 1rem;
+  }
+  .btn:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  details { margin-top: 24px; border-top: 1px solid var(--line); padding-top: 16px; }
+  summary { cursor: pointer; color: var(--muted); }
+  code {
+    display: block;
+    margin: 12px 0;
+    padding: 12px;
+    background: var(--box);
+    border-radius: 8px;
+    word-break: break-all;
+    font: 14px/1.4 ui-monospace, Menlo, Consolas, monospace;
+    color: var(--fg);
+  }
+  .copy { background: var(--box); color: var(--fg); border: 1px solid var(--line); }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <h1 id="title">Link your Patreon</h1>
+  <p id="text">One moment…</p>
+
+  <a id="open" class="btn" href="#" hidden>Return to Telegram</a>
+
+  <details id="manual" hidden>
+    <summary>Button not working?</summary>
+    <p>Copy this code and send it to the bot in this format:</p>
+    <code id="cmd"></code>
+    <button id="copy" class="btn copy" type="button">Copy command</button>
+  </details>
+</main>
+
+<script>
+  // ---- Settings -------------------------------------------------------
+  // Bot username without "@". Replace when moving to the client's bot.
+  var BOT_USERNAME = "ItsNotCheatingSyncBot";
+
+  // Contract with the bot: "state" is always exactly 12 characters
+  // (letters, digits, "_" or "-"). The bot generates it and sends it to Patreon.
+  // The bot receives start payload = code + state and splits off the last 12 chars.
+  // Telegram limits the start payload to 64 chars of [A-Za-z0-9_-].
+  var STATE_LENGTH = 12;
+  // ---------------------------------------------------------------------
+
+  var params = new URLSearchParams(window.location.search);
+  var code = params.get("code");
+  var state = params.get("state");
+  var error = params.get("error");
+
+  var title = document.getElementById("title");
+  var text = document.getElementById("text");
+  var openBtn = document.getElementById("open");
+  var manual = document.getElementById("manual");
+  var cmd = document.getElementById("cmd");
+  var copyBtn = document.getElementById("copy");
+
+  // Remove the code from the address bar and browser history.
+  if (window.history && window.history.replaceState) {
+    window.history.replaceState(null, "", window.location.pathname);
+  }
+  if (error || !code || !state) {
+    title.textContent = "Linking was not completed";
+    text.textContent = error === "access_denied"
+      ? "You declined access on Patreon. Go back to the bot and start again if you want to link your account."
+      : "This page is only used after signing in with Patreon. Go back to the bot and press the link button again.";
+  } else {
+    var payload = code + state;
+    var valid = /^[A-Za-z0-9_-]+$/.test(code) &&
+                state.length === STATE_LENGTH &&
+                /^[A-Za-z0-9_-]+$/.test(state) &&
+                payload.length <= 64;
+
+    title.textContent = "Patreon sign-in done";
+    text.textContent = "Press the button to return to Telegram and finish linking.";
+
+    if (valid) {
+      openBtn.href = "https://t.me/" + BOT_USERNAME + "?start=" + encodeURIComponent(payload);
+      openBtn.hidden = false;
+    } else {
+      text.textContent = "Copy the command below and send it to the bot to finish linking.";
+      manual.open = true;
+    }
+
+    cmd.textContent = "/register " + code + " " + state;
+    manual.hidden = false;
+
+    copyBtn.addEventListener("click", function () {
+      var done = function () { copyBtn.textContent = "Copied"; };
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(cmd.textContent).then(done, function () {});
+      } else {
+        var r = document.createRange();
+        r.selectNodeContents(cmd);
+        var s = window.getSelection();
+        s.removeAllRanges();
+        s.addRange(r);
+        try { document.execCommand("copy"); done(); } catch (e) {}
+      }
+    });
+  }
+</script>
+</body>
+</html>
